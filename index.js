@@ -1,5 +1,6 @@
 require('dotenv').config();
 const puppeteer = require('puppeteer');
+const gmail = require('./gmail');
 
 //process.env.steamuser
 //process.env.steampass
@@ -12,8 +13,20 @@ async function getSteamStats() {
 	await page.type('#username', process.env.steamuser);
 	await page.type('#password', process.env.steampass);
 	await page.click('#login_btn_signin');
-	await page.waitForNavigation({ waitUntil: 'networkidle0' });
+	
+	//await page.waitForNavigation({waitUntil: 'load'});
+	
+	await page.waitFor(10000);
 
+	let steamcode = await gmail.getSteamCode();
+	console.log(steamcode);
+	await page.type('#authcode', steamcode);
+	await page.click('#auth_buttonset_entercode > div.auth_button.leftbtn');
+	
+	await page.waitFor(10000);
+	//await page.waitForSelector('#success_continue_btn');
+	await page.click('#success_continue_btn');
+	await page.waitFor(10000);
 
 	await page.goto("https://partner.steampowered.com/app/details/1411810/?dateStart=2000-01-01&dateEnd=2020-09-18");
 	return;
@@ -32,4 +45,7 @@ async function getSteamStats() {
 	console.log(urls);
 }
 
-getSteamStats();
+(async  () => {
+	//console.log(await gmail.getSteamCode());
+	await getSteamStats();
+})();
