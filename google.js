@@ -132,8 +132,8 @@ async function writeSheetsRow(auth, values) {
 	
 	  try {
 		const response = (await sheets.spreadsheets.values.append(request)).data;
-		// TODO: Change code below to process the `response` object:
-		console.log(JSON.stringify(response, null, 2));
+		//console.log(JSON.stringify(response, null, 2));
+		console.log("Success");
 	  } catch (err) {
 		console.error(err);
 	  }
