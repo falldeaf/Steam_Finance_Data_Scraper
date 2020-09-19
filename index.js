@@ -1,51 +1,52 @@
 require('dotenv').config();
 const puppeteer = require('puppeteer');
-const gmail = require('./gmail');
+const cheerio = require('cheerio')
+const google = require('./google');
 
 //process.env.steamuser
 //process.env.steampass
 
-async function getSteamStats() {
-	const browser = await puppeteer.launch({args: ['--no-sandbox'], headless: false});
+async function getSteamStats(head) {
+	const browser = await puppeteer.launch({args: ['--no-sandbox'], headless: head});
 	const page = await browser.newPage();
 	await page.goto("https://partner.steampowered.com/");
 
 	await page.type('#username', process.env.steamuser);
 	await page.type('#password', process.env.steampass);
 	await page.click('#login_btn_signin');
-	
-	//await page.waitForNavigation({waitUntil: 'load'});
-	
-	await page.waitFor(10000);
+	await page.waitForSelector('.loginAuthCodeModal', {visible: true});
 
-	let steamcode = await gmail.getSteamCode();
-	console.log(steamcode);
+	//Wait for email to be sent
+	await page.waitForTimeout(3000);
+
+	let steamcode = await google.getSteamCode();
+	//console.log(steamcode);
 	await page.type('#authcode', steamcode);
 	await page.click('#auth_buttonset_entercode > div.auth_button.leftbtn');
 	
-	await page.waitFor(10000);
-	//await page.waitForSelector('#success_continue_btn');
+	await page.waitForSelector('#success_continue_btn', {visible: true});
 	await page.click('#success_continue_btn');
-	await page.waitFor(10000);
 
-	await page.goto("https://partner.steampowered.com/app/details/1411810/?dateStart=2000-01-01&dateEnd=2020-09-18");
-	return;
+	await page.waitForSelector('.hr-color');
+	var today = new Date().toISOString().substring(0, 10);
+	await page.goto("https://partner.steampowered.com/app/details/1411810/?dateStart=2000-01-01&dateEnd=" + today);
 
-	let urls = await page.evaluate(() => {
-		let results = [];
-		let items = document.querySelectorAll('a.storylink');
-		items.forEach((item) => {
-			results.push({
-				url:  item.getAttribute('href'),
-				text: item.innerText,
-			});
-		});
-		return results;
+	const $ = cheerio.load(await page.evaluate(() => document.querySelector('*').outerHTML));
+	
+	let stats = [];
+	stats.push(new Date().toISOString().replace(/T/, ' ').replace(/\..+/, ''));
+	$('#gameDataLeft div:first-child td:nth-child(2)').each(function(i, elem) {
+		var val = $(this).text().replace(/\$|\s/gm,'');
+		//console.log(i + " : " + val);
+		stats.push(val);
 	});
-	console.log(urls);
+
+	console.log(stats);
+	await google.writeToSheets(stats);
+	await browser.close();
 }
 
 (async  () => {
-	//console.log(await gmail.getSteamCode());
-	await getSteamStats();
+	await getSteamStats(true);
+	//await google.writeToSheets();
 })();

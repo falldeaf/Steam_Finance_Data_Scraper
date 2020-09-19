@@ -3,7 +3,7 @@ const readline = require('readline');
 const {google} = require('googleapis');
 
 // If modifying these scopes, delete token.json.
-const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
+const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly','https://www.googleapis.com/auth/spreadsheets'];
 // The file token.json stores the user's access and refresh tokens, and is
 // created automatically when the authorization flow completes for the first
 // time.
@@ -117,6 +117,28 @@ async function getLastSteamGuard(auth) {
 	return(steamguardkey);
 }
 
+async function writeSheetsRow(auth, values) {
+	const sheets = google.sheets({version: 'v4', auth});
+	const request = {
+		spreadsheetId: process.env.spreadsheetid,
+		range: "'Steam Sales'!A1:J1",  // TODO: Update placeholder value.
+		valueInputOption: 'RAW',  // TODO: Update placeholder value.
+		insertDataOption: 'INSERT_ROWS',  // TODO: Update placeholder value.
+		resource: {
+			values: [values]
+		},
+		auth: auth,
+	  };
+	
+	  try {
+		const response = (await sheets.spreadsheets.values.append(request)).data;
+		// TODO: Change code below to process the `response` object:
+		console.log(JSON.stringify(response, null, 2));
+	  } catch (err) {
+		console.error(err);
+	  }
+}
+
 exports.getSteamCode = async () => {
 	// Load client secrets from a local file.
 	let steamguardkey = await new Promise(function(resolve) {
@@ -129,3 +151,13 @@ exports.getSteamCode = async () => {
 	//console.log("Inside getsteamcode:" + steamguardkey);
 	return steamguardkey;
 };
+
+exports.writeToSheets = async (values) => {
+	fs.readFile('credentials.json', async (err, content) => {
+		if (err) return console.log('Error loading client secret file:', err);
+		// Authorize a client with credentials, then call the Gmail API.
+		authorize(JSON.parse(content), async(auth) => {
+			writeSheetsRow(auth, values);
+		});
+	});
+}
