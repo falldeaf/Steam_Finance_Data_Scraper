@@ -121,7 +121,7 @@ async function writeSheetsRow(auth, values) {
 	const sheets = google.sheets({version: 'v4', auth});
 	const request = {
 		spreadsheetId: process.env.spreadsheetid,
-		range: "'Steam Sales'!A1:J1",  // TODO: Update placeholder value.
+		range: process.env.spreadsheetq,  // TODO: Update placeholder value.
 		valueInputOption: 'RAW',  // TODO: Update placeholder value.
 		insertDataOption: 'INSERT_ROWS',  // TODO: Update placeholder value.
 		resource: {
@@ -133,7 +133,7 @@ async function writeSheetsRow(auth, values) {
 	  try {
 		const response = (await sheets.spreadsheets.values.append(request)).data;
 		//console.log(JSON.stringify(response, null, 2));
-		console.log("Success");
+		console.log("Row added to:"+process.env.spreadsheetid);
 	  } catch (err) {
 		console.error(err);
 	  }

@@ -11,6 +11,7 @@
   "dependencies": {
     "cheerio": "^1.0.0-rc.3",
     "dotenv": "^8.2.0",
+    "express": "^4.17.1",
     "googleapis": "^39.2.0",
     "puppeteer": "^5.3.0"
   }

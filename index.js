@@ -1,12 +1,15 @@
 require('dotenv').config();
 const puppeteer = require('puppeteer');
 const cheerio = require('cheerio')
+const express = require('express');
+
 const google = require('./google');
+const app = express();
 
 //process.env.steamuser
 //process.env.steampass
 
-async function getSteamStats(head) {
+async function getSteamStats(head, get) {
 	const browser = await puppeteer.launch({args: ['--no-sandbox'], headless: head});
 	const page = await browser.newPage();
 	await page.goto("https://partner.steampowered.com/");
@@ -41,12 +44,41 @@ async function getSteamStats(head) {
 		stats.push(val);
 	});
 
-	console.log(stats);
-	await google.writeToSheets(stats);
-	await browser.close();
+	console.log("Success:"+stats.join(','));
+	if(get) {
+		await browser.close();
+		return stats.join(',');
+	} else {
+		await google.writeToSheets(stats);
+		await browser.close();
+		return "";
+	}
+
+	
 }
 
-(async  () => {
-	await getSteamStats(true);
+//(async  () => {
+	//await getSteamStats(true);
 	//await google.writeToSheets();
-})();
+//})();
+
+//Return Wishlist stats from steam as csv
+app.get('/get', async (req, res) => {
+	//const name = process.env.NAME || 'World';
+	let stats = await getSteamStats(true, false);
+	console.log(stats);
+	res.send(stats);
+});
+
+//Send data to spreadsheet listed in .env
+app.get('/send', async (req, res) => {
+	//const name = process.env.NAME || 'World';
+	let stats = await getSteamStats(true, true);
+	console.log(stats);
+	res.send("Stats sent to spreadsheet.");
+});
+
+const port = process.env.PORT || 8080;
+app.listen(port, () => {
+	console.log(`Ready.  Get-> http://127.0.0.1:${port}/get Send-> http://127.0.0.1:${port}/send`);
+});
