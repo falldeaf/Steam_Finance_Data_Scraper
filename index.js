@@ -1,11 +1,8 @@
 require('dotenv').config();
 const puppeteer = require('puppeteer');
 const cheerio = require('cheerio')
-const express = require('express');
-
-const google = require('./google');
-const app = express();
-
+//const google = require('./google');
+const {google} = require('googleapis');
 //process.env.steamuser
 //process.env.steampass
 
@@ -22,7 +19,7 @@ async function getSteamStats(head, get) {
 	//Wait for email to be sent
 	await page.waitForTimeout(3000);
 
-	let steamcode = await google.getSteamCode();
+	let steamcode = await getLastSteamGuard();
 	//console.log(steamcode);
 	await page.type('#authcode', steamcode);
 	await page.click('#auth_buttonset_entercode > div.auth_button.leftbtn');
@@ -57,11 +54,49 @@ async function getSteamStats(head, get) {
 	
 }
 
+async function getLastSteamGuard(auth) {
+	let steamguardkey = await new Promise(function(resolve) {
+		const gmail = google.gmail({version: 'v1', auth});
+		gmail.users.messages.list({
+			userId: 'me',
+			includeSpamTrash: false,
+			maxResults: 1,
+			q: "from:(noreply@steampowered.com) Here is the Steam Guard code you need to login to account falldeaf"
+		}, (err, res) => {
+			if (err) return console.log('The API returned an error: ' + err);
+				//console.log(res.data.messages[0].id);	
+
+				gmail.users.messages.get({
+					userId: 'me',
+					id: res.data.messages[0].id,
+					format: "raw"
+				}, (err, res) => {
+					if (err) return console.log('The API returned an error: ' + err);
+
+					let text = Buffer.from(res.data.raw, 'base64').toString('ascii');
+
+					const regex = /<span style="font-size: 24px; color: #66c0f4; font-family: Arial, Helvetica, sans-serif; font-weight: bold;">([A-Z0-9]*)/gm;
+					
+					//console.log(regex.exec(text)[1]);
+					resolve( regex.exec(text)[1] );
+						
+				});
+		});
+	});
+	//console.log("Inside getlaststeamguard:" + steamguardkey);
+	return(steamguardkey);
+}
+
+exports.getSteamStats = (req, res) => {
+	//Gotta figure out how to auth gmail from Gfunctions...
+};
+
 //(async  () => {
 	//await getSteamStats(true);
 	//await google.writeToSheets();
 //})();
 
+/*
 //Return Wishlist stats from steam as csv
 app.get('/get', async (req, res) => {
 	//const name = process.env.NAME || 'World';
@@ -77,8 +112,4 @@ app.get('/send', async (req, res) => {
 	console.log(stats);
 	res.send("Stats sent to spreadsheet.");
 });
-
-const port = process.env.PORT || 8080;
-app.listen(port, () => {
-	console.log(`Ready.  Get-> http://127.0.0.1:${port}/get Send-> http://127.0.0.1:${port}/send`);
-});
+*/
