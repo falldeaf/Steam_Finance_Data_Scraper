@@ -117,4 +117,4 @@ dist
 
 #Gmail API
 credentials.json
-client_id.json
+client_secret.json

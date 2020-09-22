@@ -1,8 +1,8 @@
 require('dotenv').config();
 const puppeteer = require('puppeteer');
 const cheerio = require('cheerio')
-//const google = require('./google');
 const {google} = require('googleapis');
+const { promisify } = require('util');
 //process.env.steamuser
 //process.env.steampass
 
@@ -54,7 +54,21 @@ async function getSteamStats(head, get) {
 	
 }
 
-async function getLastSteamGuard(auth) {
+async function getLastSteamGuard(req, res) {
+	// Parse session cookie
+	// Note: this presumes 'token' is the only value in the cookie
+	const cookieStr = (req.headers.cookie || '').split('=')[1];
+	const token = cookieStr ? JSON.parse(decodeURIComponent(cookieStr)) : null;
+
+	// If the stored OAuth 2.0 token has expired, request a new one
+	if (!token || !token.expiry_date || token.expiry_date < Date.now() + 60000) {
+		return res.redirect('/oauth2init').end();
+	}
+
+	// Get Gmail labels
+	oauth2Client.credentials = token;
+	let auth = oauth2Client;
+
 	let steamguardkey = await new Promise(function(resolve) {
 		const gmail = google.gmail({version: 'v1', auth});
 		gmail.users.messages.list({
@@ -87,8 +101,58 @@ async function getLastSteamGuard(auth) {
 	return(steamguardkey);
 }
 
-exports.getSteamStats = (req, res) => {
+exports.oauth2init = (req, res) => {
+	// Parse session cookie
+	// Note: this presumes 'token' is the only value in the cookie
+	const cookieStr = (req.headers.cookie || '').split('=')[1];
+	const token = cookieStr ? JSON.parse(decodeURIComponent(cookieStr)) : null;
+  
+	// If the current OAuth token hasn't expired yet, go to /listlabels
+	if (token && token.expiry_date && token.expiry_date >= Date.now() + 60000) {
+		return res.redirect('/getSteamStats');
+	}
+  
+	// Define OAuth2 scopes
+	const scopes = [
+	  'https://www.googleapis.com/auth/gmail.readonly'
+	];
+  
+	// Generate + redirect to OAuth2 consent form URL
+	const authUrl = oauth2Client.generateAuthUrl({
+		access_type: 'online',
+		scope: scopes
+	});
+	res.redirect(authUrl);
+};
+
+exports.oauth2Callback = (req, res) => {
+	// Get authorization details from request
+	const code = req.query.code;
+
+	return new Promise((resolve, reject) => {
+	// OAuth2: Exchange authorization code for access token
+	oauth2Client.getToken(code, (err, token) => {
+		if (err) {
+		return reject(err);
+		}
+		return resolve(token);
+	});
+	})
+	.then((token) => {
+		// Respond with OAuth token stored as a cookie
+		res.cookie('token', JSON.stringify(token));
+		res.redirect('/listlabels');
+	})
+	.catch((err) => {
+		// Handle error
+		console.error(err);
+		res.status(500).send('Something went wrong; check the logs.');
+	});
+};
+
+exports.getSteamStats = async (req, res) => {
 	//Gotta figure out how to auth gmail from Gfunctions...
+	res.send(await getLastSteamGuard(req, res));
 };
 
 //(async  () => {
