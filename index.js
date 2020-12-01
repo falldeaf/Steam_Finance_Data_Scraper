@@ -21,8 +21,10 @@ async function getSteamStatsWeb(head) {
 
 	//Wait for Steamguard email
 	const email = await mailslurp.waitForLatestEmail(process.env.inboxid, 30000, false);
-	const regex = /<span style="font-size: 24px; color: #66c0f4; font-family: Arial, Helvetica, sans-serif; font-weight: bold;">([A-Z0-9]*)/gm;
-	let steamcode = regex.exec(email.body)[1];
+	
+	//Find the steam code, should be 5 capital Alpha or Numeric characters, surrounded by 3 or more spaces
+	const regex = /\s{3,}[A-Z0-9]{5}\s{3,}/gm;
+	let steamcode = regex.exec(email.body)[0].replace(/\s/g,'');
 
 	//Enter steamcode
 	await page.type('#authcode', steamcode);
