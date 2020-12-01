@@ -114,7 +114,3 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
-
-#Gmail API
-credentials.json
-client_secret.json
