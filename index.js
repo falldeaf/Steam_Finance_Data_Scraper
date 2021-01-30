@@ -1,13 +1,9 @@
 require('dotenv').config();
+const fetch = require('node-fetch');
 const puppeteer = require('puppeteer');
 const cheerio = require('cheerio')
-const MailSlurp = require("mailslurp-client").default;
 
 async function getSteamStatsWeb(head) {
-	//Open up the inbox and delete all emails
-	const mailslurp = new MailSlurp({ apiKey: process.env.mailslurpkey })
-	await mailslurp.emptyInbox(process.env.inboxid);
-
 	//Login to Steam
 	const browser = await puppeteer.launch({args: ['--no-sandbox'], headless: head});
 	const page = await browser.newPage();
@@ -20,11 +16,7 @@ async function getSteamStatsWeb(head) {
 	await page.waitForSelector('.loginAuthCodeModal', {visible: true});
 
 	//Wait for Steamguard email
-	const email = await mailslurp.waitForLatestEmail(process.env.inboxid, 30000, false);
-	
-	//Find the steam code, should be 5 capital Alpha or Numeric characters, surrounded by 3 or more spaces
-	const regex = /\s{3,}[A-Z0-9]{5}\s{3,}/gm;
-	let steamcode = regex.exec(email.body)[0].replace(/\s/g,'');
+	const steamcode = await getSteamGuardCode(false);
 
 	//Enter steamcode
 	await page.type('#authcode', steamcode);
@@ -53,6 +45,22 @@ async function getSteamStatsWeb(head) {
 	console.log("Success:"+stats.join(','));
 	await browser.close();
 	return stats.join(',');
+}
+
+async function getSteamGuardCode(debug){
+	var timestamp = debug ? 1611987569691 : new Date().valueOf();
+	var emailurl = "https://api.testmail.app/api/json?apikey=" + process.env.emailapi + "&namespace=" + process.env.emailnamespace + "&pretty=true&&livequery=true&&limit=1&tag=steam&timestamp_from=" + timestamp;
+
+	//get the email JSON data, then find the body text of the email
+	var emailjson = await fetch(emailurl);
+	const data = await emailjson.json();
+	var emailtext = await data.emails[0].text;
+
+	//Find the steam code, should be 5 capital Alpha or Numeric characters, surrounded by 3 or more spaces
+	const regex = /\s{2,}[A-Z0-9]{5}\s{2,}/gm;
+	let steamcode = regex.exec(emailtext)[0].replace(/\s/g,'');
+
+	return steamcode;
 }
 
 exports.getSteamStats = async (req, res) => {
