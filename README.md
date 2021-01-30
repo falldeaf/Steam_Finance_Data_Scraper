@@ -1,5 +1,5 @@
 #Steam Financial Data Scraper.
-puppeteer web scraper for getting analytics data
+ puppeteer web scraper for getting analytics data
 
 This NodeJS google cloud function uses puppeteer and Testmail.app to scrape your daily financial data.
 
