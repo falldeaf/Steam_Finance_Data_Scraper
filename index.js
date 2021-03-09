@@ -1,11 +1,20 @@
 require('dotenv').config();
 const fetch = require('node-fetch');
-const puppeteer = require('puppeteer');
+const chromium = require('chrome-aws-lambda');
 const cheerio = require('cheerio')
 
 async function getSteamStatsWeb(head) {
 	//Login to Steam
-	const browser = await puppeteer.launch({args: ['--no-sandbox'], headless: head});
+	const browser = await chromium.puppeteer.launch({
+		//headless: head,
+		// Required
+		executablePath: await chromium.executablePath,
+
+		// Optional
+		args: chromium.args,
+		defaultViewport: chromium.defaultViewport,
+		headless: chromium.headless
+	});
 	const page = await browser.newPage();
 	await page.goto("https://partner.steampowered.com/");
 
@@ -63,7 +72,13 @@ async function getSteamGuardCode(debug){
 	return steamcode;
 }
 
-exports.getSteamStats = async (req, res) => {
+exports.handler = async (event) => {
 	//Set to true for remote (run puppateer headless mode)
-	res.send(await getSteamStatsWeb(true));
+	const response = {
+		statusCode: 200,
+		body: await getSteamStatsWeb(true)
+	};
+	return response;
 };
+
+console.log(getSteamStatsWeb(false));
